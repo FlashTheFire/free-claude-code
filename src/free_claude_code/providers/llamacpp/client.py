@@ -9,6 +9,7 @@ from free_claude_code.providers.transports.openai_chat import (
     OpenAIChatRequestPolicy,
     OpenAIChatTransport,
     build_openai_chat_request_body,
+    openai_v1_base_url,
 )
 
 _REQUEST_POLICY = OpenAIChatRequestPolicy(
@@ -24,7 +25,7 @@ class LlamaCppProvider(OpenAIChatTransport):
         super().__init__(
             config,
             provider_name="LLAMACPP",
-            base_url=config.base_url or LLAMACPP_DEFAULT_BASE,
+            base_url=openai_v1_base_url(config.base_url or LLAMACPP_DEFAULT_BASE),
             api_key=config.api_key or "llamacpp",
             rate_limiter=rate_limiter,
         )

@@ -5,7 +5,10 @@ from urllib.parse import urljoin
 import httpx
 import pytest
 
+from free_claude_code.providers.transports.openai_chat import openai_v1_base_url
+
 LOCAL_PROVIDER_PROBE_TIMEOUT_S = 1.5
+_ROOT_OR_V1_PROVIDERS = frozenset({"llamacpp", "ollama"})
 
 
 def first_local_provider_model_id(
@@ -20,9 +23,8 @@ def first_local_provider_model_id(
         pytest.skip(f"missing_env: {provider} base URL is not configured")
 
     timeout = min(timeout_s, LOCAL_PROVIDER_PROBE_TIMEOUT_S)
-    if provider == "ollama":
-        normalized = base_url.rstrip("/")
-        base_url = normalized if normalized.endswith("/v1") else f"{normalized}/v1"
+    if provider in _ROOT_OR_V1_PROVIDERS:
+        base_url = openai_v1_base_url(base_url)
     return _first_openai_compatible_model_id(
         provider,
         base_url,

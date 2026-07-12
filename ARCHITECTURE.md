@@ -488,10 +488,9 @@ passes it as `model_catalog_json`. Codex users open the native picker with
 
 Provider metadata is neutral and centralized in
 [config/provider_catalog.py](src/free_claude_code/config/provider_catalog.py). Each
-`ProviderDescriptor` declares provider ID, immutable semantic capabilities,
-credential env var, default base URL, settings attribute names, and proxy support.
-Capabilities describe product behavior such as locality and Anthropic server-tool
-passthrough; they do not select a concrete adapter.
+`ProviderDescriptor` declares provider ID, display name, locality, credential env
+var, default base URL, settings attribute names, and proxy support. It does not
+select a concrete adapter.
 
 [providers/runtime/](src/free_claude_code/providers/runtime/) owns construction details for one
 closable provider generation: factory wiring, provider configuration, lazy
@@ -542,7 +541,9 @@ There is one transport family under [providers/transports/](src/free_claude_code
   `/chat/completions` APIs. Its `transport.py` co-locates the transport base with
   the exactly typed private per-request runner and its recovery operations; no
   cross-module object reaches through an untyped transport backchannel. The
-  package also owns OpenAI request policy and tool-call assembly.
+  package also owns OpenAI request policy, tool-call assembly, and the explicit
+  server-root-to-`/v1` normalization selected by local providers that accept both
+  URL forms.
 
 The transport explicitly implements preflight by constructing the same
 upstream request body they will later stream. `BaseProvider` makes that operation

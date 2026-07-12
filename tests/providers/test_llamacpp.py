@@ -22,6 +22,29 @@ def provider() -> LlamaCppProvider:
     )
 
 
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        (None, "http://localhost:8080/v1"),
+        ("http://localhost:8080", "http://localhost:8080/v1"),
+        ("http://localhost:8080/", "http://localhost:8080/v1"),
+        ("http://localhost:8080/v1", "http://localhost:8080/v1"),
+        ("http://localhost:8080/v1/", "http://localhost:8080/v1"),
+    ],
+)
+def test_init_normalizes_openai_base_url(configured: str | None, expected: str) -> None:
+    with patch(
+        "free_claude_code.providers.transports.openai_chat.transport.AsyncOpenAI"
+    ) as openai_client:
+        provider = LlamaCppProvider(
+            ProviderConfig(api_key="", base_url=configured),
+            rate_limiter=passthrough_rate_limiter(),
+        )
+
+    assert provider._base_url == expected
+    assert openai_client.call_args.kwargs["base_url"] == expected
+
+
 def test_init_uses_openai_chat_client() -> None:
     config = ProviderConfig(
         api_key="",
