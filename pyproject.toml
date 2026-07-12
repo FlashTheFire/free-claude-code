@@ -128,3 +128,8 @@ python-version = "3.14"
 # Optional voice_local extra: torch, transformers, librosa for local whisper transcription
 # Optional voice extra: nvidia-riva-client for nvidia_nim transcription provider
 allowed-unresolved-imports = ["torch", "transformers", "librosa", "riva.client"]
+
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["."]
+
