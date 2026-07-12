@@ -544,6 +544,46 @@ async function initModelValidator() {
       container.appendChild(group);
     });
     
+    const searchInput = byId("modelSearchInput");
+    if (searchInput) {
+      // Clear any search term from previous loads
+      searchInput.value = "";
+      searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const groups = container.querySelectorAll(".provider-group");
+        
+        groups.forEach(group => {
+          const providerLabel = group.querySelector(".provider-group-header label strong").textContent.toLowerCase();
+          const items = group.querySelectorAll(".model-checkbox-item");
+          let visibleCount = 0;
+          
+          items.forEach(item => {
+            const modelVal = item.querySelector("input").value.toLowerCase();
+            const modelText = item.querySelector("span").textContent.toLowerCase();
+            
+            const match = modelVal.includes(query) || modelText.includes(query) || providerLabel.includes(query);
+            if (match) {
+              item.style.display = "flex";
+              visibleCount++;
+            } else {
+              item.style.display = "none";
+            }
+          });
+          
+          if (visibleCount > 0 || providerLabel.includes(query)) {
+            group.style.display = "block";
+            if (providerLabel.includes(query) && query !== "") {
+              items.forEach(item => {
+                item.style.display = "flex";
+              });
+            }
+          } else {
+            group.style.display = "none";
+          }
+        });
+      });
+    }
+    
     await pollValidatorStatus();
   } catch (err) {
     console.error("Failed to load testable models:", err);
@@ -551,16 +591,34 @@ async function initModelValidator() {
 }
 
 byId("btnSelectAllModels").addEventListener("click", () => {
-  document.querySelectorAll("#modelChecklist input[type='checkbox']").forEach(cb => {
-    cb.checked = true;
-    cb.indeterminate = false;
+  document.querySelectorAll("#modelChecklist .provider-group").forEach(group => {
+    if (group.style.display === "none") return;
+    group.querySelectorAll(".model-checkbox-item").forEach(item => {
+      if (item.style.display === "none") return;
+      const cb = item.querySelector("input[type='checkbox']");
+      if (cb) cb.checked = true;
+    });
+    const selectAllCb = group.querySelector(".provider-group-header input[type='checkbox']");
+    if (selectAllCb) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    }
   });
 });
 
 byId("btnDeselectAllModels").addEventListener("click", () => {
-  document.querySelectorAll("#modelChecklist input[type='checkbox']").forEach(cb => {
-    cb.checked = false;
-    cb.indeterminate = false;
+  document.querySelectorAll("#modelChecklist .provider-group").forEach(group => {
+    if (group.style.display === "none") return;
+    group.querySelectorAll(".model-checkbox-item").forEach(item => {
+      if (item.style.display === "none") return;
+      const cb = item.querySelector("input[type='checkbox']");
+      if (cb) cb.checked = false;
+    });
+    const selectAllCb = group.querySelector(".provider-group-header input[type='checkbox']");
+    if (selectAllCb) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
   });
 });
 

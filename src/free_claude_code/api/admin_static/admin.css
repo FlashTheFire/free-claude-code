@@ -792,9 +792,30 @@ textarea:focus-visible,
 }
 
 .model-selection-panel h4 {
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   font-size: 1rem;
   color: var(--text-strong);
+}
+
+.search-box {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.875rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+  outline: none;
 }
 
 .model-checklist {
@@ -803,7 +824,25 @@ textarea:focus-visible,
   gap: 16px;
   max-height: 500px;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 8px;
+}
+
+.model-checklist::-webkit-scrollbar {
+  width: 6px;
+}
+
+.model-checklist::-webkit-scrollbar-track {
+  background: var(--panel-strong);
+  border-radius: var(--radius-full);
+}
+
+.model-checklist::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: var(--radius-full);
+}
+
+.model-checklist::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .provider-group {
