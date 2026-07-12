@@ -131,5 +131,5 @@ allowed-unresolved-imports = ["torch", "transformers", "librosa", "riva.client"]
 
 [tool.pyright]
 include = ["src", "tests"]
-extraPaths = ["src"]
+extraPaths = ["src", "."]
 
