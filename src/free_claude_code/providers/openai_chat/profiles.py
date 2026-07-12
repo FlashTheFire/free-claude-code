@@ -226,4 +226,18 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
         ),
         normalize_base_url=True,
     ),
+    "zenmux": OpenAIChatProfile(
+        OpenAIChatRequestPolicy(
+            provider_name="ZENMUX",
+            include_extra_body=True,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        )
+    ),
+    "iamhc": OpenAIChatProfile(
+        OpenAIChatRequestPolicy(
+            provider_name="IAMHC",
+            include_extra_body=True,
+            default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+        )
+    ),
 }

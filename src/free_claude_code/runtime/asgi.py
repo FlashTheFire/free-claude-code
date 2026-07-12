@@ -1,5 +1,7 @@
 """ASGI lifespan adapter for the application runtime owner."""
 
+import asyncio
+import contextlib
 from typing import Any
 
 from loguru import logger
@@ -20,7 +22,8 @@ class RuntimeASGIApp:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "lifespan":
-            await self.app(scope, receive, send)
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.app(scope, receive, send)
             return
         await self._lifespan(receive, send)
 

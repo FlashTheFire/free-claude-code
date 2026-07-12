@@ -1,4 +1,11 @@
 import os
+from unittest.mock import patch
+import pytest
+
+@pytest.fixture(autouse=True)
+def mock_shutil_which():
+    with patch("shutil.which", return_value="claude"):
+        yield
 
 from free_claude_code.cli.managed.claude import (
     MANAGED_CLAUDE_MODEL_TIER,
