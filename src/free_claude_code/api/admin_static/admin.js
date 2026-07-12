@@ -29,6 +29,13 @@ const VIEW_GROUPS = [
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
   },
+  {
+    id: "model_validator",
+    label: "Model Validator",
+    title: "Model Validator",
+    sections: [],
+    containerId: "modelValidatorSections",
+  },
 ];
 
 const byId = (id) => document.getElementById(id);
@@ -87,6 +94,7 @@ async function load() {
   await validate(false);
   await refreshLocalStatus();
   updateDirtyState();
+  await initModelValidator();
   showMessage("");
 }
 
@@ -465,6 +473,233 @@ function showMessage(message, kind = "") {
   const area = byId("messageArea");
   area.textContent = message;
   area.className = `message-area ${kind}`.trim();
+}
+
+let validatorPollInterval = null;
+
+async function initModelValidator() {
+  try {
+    const data = await api("/admin/api/test-models/models");
+    const container = byId("modelChecklist");
+    container.innerHTML = "";
+    
+    const providers = Object.keys(data.grouped).sort();
+    providers.forEach(provider => {
+      const group = document.createElement("div");
+      group.className = "provider-group";
+      
+      const header = document.createElement("div");
+      header.className = "provider-group-header";
+      
+      const selectAllCheckbox = document.createElement("input");
+      selectAllCheckbox.type = "checkbox";
+      selectAllCheckbox.id = `select-provider-${provider}`;
+      selectAllCheckbox.checked = true;
+      
+      const label = document.createElement("label");
+      label.htmlFor = `select-provider-${provider}`;
+      label.innerHTML = `<strong>${provider}</strong>`;
+      
+      header.append(selectAllCheckbox, label);
+      
+      const list = document.createElement("div");
+      list.className = "provider-models-list";
+      
+      data.grouped[provider].forEach(model => {
+        const item = document.createElement("label");
+        item.className = "model-checkbox-item";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = model;
+        checkbox.checked = true;
+        checkbox.className = "model-checkbox";
+        
+        const modelSpan = document.createElement("span");
+        modelSpan.textContent = model.includes("/") ? model.split("/").slice(1).join("/") : model;
+        modelSpan.title = model;
+        
+        item.append(checkbox, modelSpan);
+        list.appendChild(item);
+        
+        checkbox.addEventListener("change", () => {
+          const allCheckboxes = list.querySelectorAll(".model-checkbox");
+          const checkedCheckboxes = list.querySelectorAll(".model-checkbox:checked");
+          selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
+          selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
+        });
+      });
+      
+      selectAllCheckbox.addEventListener("change", () => {
+        list.querySelectorAll(".model-checkbox").forEach(cb => {
+          cb.checked = selectAllCheckbox.checked;
+        });
+      });
+      
+      group.append(header, list);
+      container.appendChild(group);
+    });
+    
+    await pollValidatorStatus();
+  } catch (err) {
+    console.error("Failed to load testable models:", err);
+  }
+}
+
+byId("btnSelectAllModels").addEventListener("click", () => {
+  document.querySelectorAll("#modelChecklist input[type='checkbox']").forEach(cb => {
+    cb.checked = true;
+    cb.indeterminate = false;
+  });
+});
+
+byId("btnDeselectAllModels").addEventListener("click", () => {
+  document.querySelectorAll("#modelChecklist input[type='checkbox']").forEach(cb => {
+    cb.checked = false;
+    cb.indeterminate = false;
+  });
+});
+
+byId("btnStartValidation").addEventListener("click", async () => {
+  const selectedModels = Array.from(document.querySelectorAll(".model-checkbox:checked")).map(cb => cb.value);
+  if (selectedModels.length === 0) {
+    alert("Please select at least one model to validate.");
+    return;
+  }
+  
+  const startBtn = byId("btnStartValidation");
+  startBtn.disabled = true;
+  startBtn.textContent = "⌛ Starting...";
+  
+  try {
+    await api("/admin/api/test-models/run", {
+      method: "POST",
+      body: JSON.stringify({ models: selectedModels })
+    });
+    
+    const tbody = byId("resultsTableBody");
+    tbody.innerHTML = selectedModels.map(model => `
+      <tr id="row-${model.replace(/\//g, '_')}">
+        <td><code>${model}</code></td>
+        <td><span class="status-cell pending">Pending</span></td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="response-preview">-</span></td>
+      </tr>
+    `).join("");
+    
+    byId("summaryTotal").textContent = `0 / ${selectedModels.length}`;
+    byId("summaryPassed").textContent = "0";
+    byId("summaryFailed").textContent = "0";
+    byId("summaryAvgLatency").textContent = "0 ms";
+    
+    byId("progressBarStatus").textContent = 'Run' + 'ning';
+    byId("progressBarPercent").textContent = "0%";
+    byId("progressBarFill").style.width = "0%";
+    
+    if (validatorPollInterval) clearInterval(validatorPollInterval);
+    validatorPollInterval = setInterval(pollValidatorStatus, 1000);
+  } catch (err) {
+    alert("Failed to start model validator: " + err.message);
+    startBtn.disabled = false;
+    startBtn.textContent = "🚀 Start Validation";
+  }
+});
+
+async function pollValidatorStatus() {
+  try {
+    const status = await api("/admin/api/test-models/status");
+    const startBtn = byId("btnStartValidation");
+    
+    if (status.is_running) {
+      startBtn.disabled = true;
+      startBtn.textContent = "⌛ Validating...";
+      if (!validatorPollInterval) {
+        validatorPollInterval = setInterval(pollValidatorStatus, 1000);
+      }
+    } else {
+      startBtn.disabled = false;
+      startBtn.textContent = "🚀 Start Validation";
+      if (validatorPollInterval) {
+        clearInterval(validatorPollInterval);
+        validatorPollInterval = null;
+      }
+    }
+    
+    const percent = status.total > 0 ? Math.round((status.tested / status.total) * 100) : 0;
+    byId("progressBarStatus").textContent = status.is_running ? "Running tests..." : "Idle";
+    byId("progressBarPercent").textContent = `${percent}%`;
+    byId("progressBarFill").style.width = `${percent}%`;
+    
+    let passed = 0;
+    let failed = 0;
+    let totalLatency = 0;
+    let passedCount = 0;
+    
+    const tbody = byId("resultsTableBody");
+    if (Object.keys(status.results).length > 0) {
+      tbody.innerHTML = "";
+      
+      const sortedKeys = Object.keys(status.results).sort();
+      sortedKeys.forEach(model => {
+        const res = status.results[model];
+        
+        if (res.status === "passed") {
+          passed++;
+          totalLatency += res.latency_ms;
+          passedCount++;
+        } else if (["failed", "timeout", "error"].includes(res.status)) {
+          failed++;
+        }
+        
+        const row = document.createElement("tr");
+        row.id = `row-${model.replace(/\//g, '_')}`;
+        
+        const modelCell = document.createElement("td");
+        modelCell.innerHTML = `<code>${model}</code>`;
+        
+        const statusCell = document.createElement("td");
+        const statusSpan = document.createElement("span");
+        statusSpan.className = `status-cell ${res.status}`;
+        statusSpan.textContent = res.status;
+        statusCell.appendChild(statusSpan);
+        
+        const httpCell = document.createElement("td");
+        httpCell.textContent = res.http_status || "-";
+        
+        const latencyCell = document.createElement("td");
+        latencyCell.textContent = res.latency_ms ? `${res.latency_ms} ms` : "-";
+        
+        const detailCell = document.createElement("td");
+        const detailSpan = document.createElement("span");
+        detailSpan.className = "response-preview";
+        
+        if (res.status === "passed") {
+          detailSpan.textContent = res.response ? res.response.substring(0, 100) : "(no body)";
+        } else if (res.status === "running") {
+          detailSpan.textContent = "Testing...";
+        } else if (res.status === "pending") {
+          detailSpan.textContent = "Queued";
+        } else {
+          detailSpan.textContent = res.error_message || res.error_type || "Unknown error";
+          detailSpan.style.color = "var(--error)";
+        }
+        detailCell.appendChild(detailSpan);
+        
+        row.append(modelCell, statusCell, httpCell, latencyCell, detailCell);
+        tbody.appendChild(row);
+      });
+    }
+    
+    const avgLatency = passedCount > 0 ? Math.round(totalLatency / passedCount) : 0;
+    byId("summaryTotal").textContent = `${status.tested} / ${status.total}`;
+    byId("summaryPassed").textContent = passed;
+    byId("summaryFailed").textContent = failed;
+    byId("summaryAvgLatency").textContent = `${avgLatency} ms`;
+    
+  } catch (err) {
+    console.error("Error polling validator status:", err);
+  }
 }
 
 byId("validateButton").addEventListener("click", () => validate(true));
