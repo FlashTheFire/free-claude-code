@@ -21,7 +21,8 @@ def first_local_provider_model_id(
 
     timeout = min(timeout_s, LOCAL_PROVIDER_PROBE_TIMEOUT_S)
     if provider == "ollama":
-        return _first_ollama_model_id(base_url, timeout_s=timeout)
+        normalized = base_url.rstrip("/")
+        base_url = normalized if normalized.endswith("/v1") else f"{normalized}/v1"
     return _first_openai_compatible_model_id(
         provider,
         base_url,
@@ -46,20 +47,6 @@ def _first_openai_compatible_model_id(
                 return item["id"]
         pytest.skip(f"missing_env: {provider} local server has no loaded models")
     pytest.fail("product_failure: local /models did not expose a model id")
-
-
-def _first_ollama_model_id(base_url: str, *, timeout_s: float) -> str:
-    tags_url = f"{base_url.rstrip('/')}/api/tags"
-    response = _get_local_provider_response("ollama", tags_url, timeout_s=timeout_s)
-    assert response.status_code == 200, response.text
-    payload = response.json()
-    models = payload.get("models") if isinstance(payload, dict) else None
-    if isinstance(models, list):
-        for item in models:
-            if isinstance(item, dict) and isinstance(item.get("name"), str):
-                return item["name"]
-        pytest.skip("missing_env: ollama local server has no pulled models")
-    pytest.fail("product_failure: ollama /api/tags did not expose models")
 
 
 def _get_local_provider_response(

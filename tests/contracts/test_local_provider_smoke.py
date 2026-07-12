@@ -35,11 +35,11 @@ def test_local_provider_openai_models_returns_first_id(monkeypatch) -> None:
     assert calls == [("http://127.0.0.1:1234/v1/models", 1.5)]
 
 
-def test_local_provider_ollama_tags_returns_first_name(monkeypatch) -> None:
+def test_local_provider_ollama_openai_models_returns_first_id(monkeypatch) -> None:
     def fake_get(url: str, *, timeout: float) -> FakeResponse:
-        assert url == "http://127.0.0.1:11434/api/tags"
+        assert url == "http://127.0.0.1:11434/v1/models"
         assert timeout == 1.5
-        return FakeResponse(200, {"models": [{"name": "llama3.1"}]})
+        return FakeResponse(200, {"data": [{"id": "llama3.1"}]})
 
     monkeypatch.setattr("smoke.lib.local_providers.httpx.get", fake_get)
 
