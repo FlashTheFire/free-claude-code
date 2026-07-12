@@ -226,13 +226,15 @@ async def handle_model_command(
         current_model = getattr(settings, "model", "")
 
     from free_claude_code.messaging.keyboards import make_model_keyboard
+    text, kb = make_model_keyboard(current_model)
     msg_id = await handler.outbound.queue_send_message(
         incoming.chat_id,
-        "🤖 *Select Active Claude Model Override*:",
+        text,
         reply_to=incoming.message_id,
         fire_and_forget=False,
         message_thread_id=incoming.message_thread_id,
-        reply_markup=make_model_keyboard(current_model),
+        reply_markup=kb,
+        parse_mode="HTML",
     )
     handler.record_outgoing_message(
         incoming.platform, incoming.chat_id, msg_id, "command"
@@ -354,14 +356,18 @@ async def handle_start_command(
     )
 
     from free_claude_code.messaging.keyboards import make_start_keyboard
+    is_tg = incoming.platform == "telegram"
+    reply_markup = make_start_keyboard() if is_tg else None
+    parse_mode = "HTML" if is_tg else None
+
     msg_id = await handler.outbound.queue_send_message(
         incoming.chat_id,
         help_text,
         reply_to=incoming.message_id,
         fire_and_forget=False,
         message_thread_id=incoming.message_thread_id,
-        reply_markup=make_start_keyboard(),
-        parse_mode="HTML",
+        reply_markup=reply_markup,
+        parse_mode=parse_mode,
     )
     handler.record_outgoing_message(
         incoming.platform, incoming.chat_id, msg_id, "command"

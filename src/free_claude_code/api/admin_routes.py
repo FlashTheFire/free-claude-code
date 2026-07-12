@@ -239,7 +239,16 @@ async def run_model_tests(
     from .model_testing import testing_manager
     port = settings.port
     auth_token = settings.anthropic_auth_token
-    testing_manager.start_test(payload.models, auth_token, port)
+    started = testing_manager.start_test(payload.models, auth_token, port)
+    if not started:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "status": "already_running",
+                "message": "A model test run is already in progress.",
+                "total": testing_manager.total_models,
+            }
+        )
     return {"status": "started", "total": len(payload.models)}
 
 

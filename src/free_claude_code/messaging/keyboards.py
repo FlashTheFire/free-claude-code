@@ -10,6 +10,21 @@ except ImportError:
     InlineKeyboardMarkup = None
 
 
+import hashlib
+
+_callback_registry = {}
+
+def register_callback_path(prefix: str, path: str) -> str:
+    """Register a path and return a unique short callback data key under 64 bytes."""
+    h = hashlib.md5(path.encode("utf-8")).hexdigest()
+    key = f"{prefix}:{h}"
+    _callback_registry[key] = path
+    return key
+
+def get_registered_path(key: str) -> str | None:
+    return _callback_registry.get(key)
+
+
 def make_stop_keyboard(node_id: str) -> Any:
     """Build a keyboard with a Stop button for the given task node."""
     if InlineKeyboardButton is None or InlineKeyboardMarkup is None:
@@ -119,7 +134,8 @@ def make_model_keyboard(current_model: str, page: int = 0, search_query: str = "
     # Add model buttons
     for name, path in page_items:
         prefix = "✅ " if current_model == path else "⬜ "
-        keyboard.append([InlineKeyboardButton(f"{prefix}{name}", callback_data=f"model_set:{path}")])
+        cb_data = register_callback_path("model_set", path)
+        keyboard.append([InlineKeyboardButton(f"{prefix}{name}", callback_data=cb_data)])
 
     # Add navigation row
     nav_row = []
@@ -214,7 +230,13 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
     base_abs = os.path.normpath(os.path.abspath(workspace_dir))
     target_abs = os.path.normpath(os.path.abspath(os.path.join(base_abs, rel_path)))
 
-    if not target_abs.startswith(base_abs):
+    try:
+        common = os.path.commonpath([base_abs, target_abs])
+        is_contained = os.path.normpath(common) == base_abs
+    except Exception:
+        is_contained = False
+
+    if not is_contained:
         return "❌ Access Denied: Directory traversal blocked.", None
 
     if not os.path.exists(target_abs):
@@ -236,7 +258,8 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
         parent_rel = os.path.dirname(rel_path)
         # Normalize relative path of parent
         parent_rel = "" if parent_rel in [".", "..", ""] else parent_rel.replace("\\", "/")
-        keyboard.append([InlineKeyboardButton("🔙 .. (Back)", callback_data=f"workspace_ls:{parent_rel}")])
+        cb_data = register_callback_path("workspace_ls", parent_rel) if parent_rel else "workspace_ls:"
+        keyboard.append([InlineKeyboardButton("🔙 .. (Back)", callback_data=cb_data)])
 
     dirs = []
     files = []
@@ -251,11 +274,13 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
 
     # Add directories first
     for name, path in dirs[:15]:  # limit to prevent hitting button limit
-        keyboard.append([InlineKeyboardButton(f"📁 {name}", callback_data=f"workspace_ls:{path}")])
+        cb_data = register_callback_path("workspace_ls", path)
+        keyboard.append([InlineKeyboardButton(f"📁 {name}", callback_data=cb_data)])
 
     # Add files
     for name, path in files[:15]:
-        keyboard.append([InlineKeyboardButton(f"📄 {name}", callback_data=f"workspace_view:{path}")])
+        cb_data = register_callback_path("workspace_view", path)
+        keyboard.append([InlineKeyboardButton(f"📄 {name}", callback_data=cb_data)])
 
     keyboard.append([
         InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start"),

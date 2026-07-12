@@ -111,7 +111,6 @@ async def create_message(
 ):
     """Create a message (streaming by default; stream=false gets aggregated JSON)."""
     logger.info(f"Incoming POST /v1/messages for model: {request_data.model}")
-    print(f"📡 [fcc-server] Received POST /v1/messages for model: {request_data.model}", flush=True)
     return await _create_messages_response(
         services,
         request_data,
@@ -133,7 +132,6 @@ async def create_response(
 ):
     """Create an OpenAI Responses-compatible response through this proxy."""
     logger.info(f"Incoming POST /v1/responses for model: {request_data.model}")
-    print(f"📡 [fcc-server] Received POST /v1/responses for model: {request_data.model}", flush=True)
     return await _create_responses_response(
         services,
         request_data,

@@ -22,10 +22,10 @@ class RuntimeASGIApp:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "lifespan":
-            with contextlib.suppress(asyncio.CancelledError):
-                await self.app(scope, receive, send)
+            await self.app(scope, receive, send)
             return
-        await self._lifespan(receive, send)
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._lifespan(receive, send)
 
     async def _lifespan(self, receive: Receive, send: Send) -> None:
         started = False

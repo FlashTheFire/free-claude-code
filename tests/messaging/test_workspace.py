@@ -23,8 +23,9 @@ async def test_make_workspace_keyboard_root():
         # Check inline keyboard markup structure
         buttons = kb.inline_keyboard
         assert len(buttons) >= 3
-        assert any(btn.callback_data == "workspace_ls:subdir" for row in buttons for btn in row)
-        assert any(btn.callback_data == "workspace_view:file.txt" for row in buttons for btn in row)
+        from free_claude_code.messaging.keyboards import get_registered_path
+        assert any(get_registered_path(btn.callback_data) == "subdir" for row in buttons for btn in row)
+        assert any(get_registered_path(btn.callback_data) == "file.txt" for row in buttons for btn in row)
 
 
 @pytest.mark.asyncio

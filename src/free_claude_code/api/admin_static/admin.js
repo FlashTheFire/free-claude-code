@@ -578,15 +578,37 @@ byId("btnStartValidation").addEventListener("click", async () => {
     });
     
     const tbody = byId("resultsTableBody");
-    tbody.innerHTML = selectedModels.map(model => `
-      <tr id="row-${model.replace(/\//g, '_')}">
-        <td><code>${model}</code></td>
-        <td><span class="status-cell pending">Pending</span></td>
-        <td>-</td>
-        <td>-</td>
-        <td><span class="response-preview">-</span></td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = "";
+    selectedModels.forEach(model => {
+      const row = document.createElement("tr");
+      row.id = `row-${model.replace(/\//g, '_')}`;
+
+      const modelCell = document.createElement("td");
+      const code = document.createElement("code");
+      code.textContent = model;
+      modelCell.appendChild(code);
+
+      const statusCell = document.createElement("td");
+      const statusSpan = document.createElement("span");
+      statusSpan.className = "status-cell pending";
+      statusSpan.textContent = "Pending";
+      statusCell.appendChild(statusSpan);
+
+      const httpCell = document.createElement("td");
+      httpCell.textContent = "-";
+
+      const latencyCell = document.createElement("td");
+      latencyCell.textContent = "-";
+
+      const detailCell = document.createElement("td");
+      const detailSpan = document.createElement("span");
+      detailSpan.className = "response-preview";
+      detailSpan.textContent = "-";
+      detailCell.appendChild(detailSpan);
+
+      row.append(modelCell, statusCell, httpCell, latencyCell, detailCell);
+      tbody.appendChild(row);
+    });
     
     byId("summaryTotal").textContent = `0 / ${selectedModels.length}`;
     byId("summaryPassed").textContent = "0";
@@ -656,7 +678,9 @@ async function pollValidatorStatus() {
         row.id = `row-${model.replace(/\//g, '_')}`;
         
         const modelCell = document.createElement("td");
-        modelCell.innerHTML = `<code>${model}</code>`;
+        const code = document.createElement("code");
+        code.textContent = model;
+        modelCell.appendChild(code);
         
         const statusCell = document.createElement("td");
         const statusSpan = document.createElement("span");

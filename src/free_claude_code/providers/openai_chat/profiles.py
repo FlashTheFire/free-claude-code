@@ -231,6 +231,7 @@ OPENAI_CHAT_PROFILES: dict[str, OpenAIChatProfile] = {
             provider_name="ZENMUX",
             include_extra_body=True,
             default_max_tokens=ANTHROPIC_DEFAULT_MAX_OUTPUT_TOKENS,
+            max_tokens_field="max_completion_tokens",
         )
     ),
     "iamhc": OpenAIChatProfile(

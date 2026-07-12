@@ -27,10 +27,13 @@ class ModelTestingManager:
         self.results: Dict[str, ModelTestResult] = {}
         self.start_time = 0.0
         self.elapsed_seconds = 0.0
+        self._current_task = None
+        self._save_in_progress = False
+        self._save_needed = False
 
-    def start_test(self, model_ids: List[str], auth_token: str, port: int):
+    def start_test(self, model_ids: List[str], auth_token: str, port: int) -> bool:
         if self.is_running:
-            return
+            return False
         self.is_running = True
         self.total_models = len(model_ids)
         self.tested_count = 0
@@ -41,7 +44,27 @@ class ModelTestingManager:
             for m_id in model_ids
         }
         # Run in background via asyncio
-        asyncio.create_task(self._run_tests(model_ids, auth_token, port))
+        task = asyncio.create_task(self._run_tests(model_ids, auth_token, port))
+        self._current_task = task
+        
+        def _on_done(t):
+            self._current_task = None
+            
+        task.add_done_callback(_on_done)
+        return True
+
+    async def request_save(self):
+        if self._save_in_progress:
+            self._save_needed = True
+            return
+        self._save_in_progress = True
+        self._save_needed = False
+        try:
+            await asyncio.to_thread(self.save_results_files)
+        finally:
+            self._save_in_progress = False
+            if self._save_needed:
+                asyncio.create_task(self.request_save())
 
     async def _run_tests(self, model_ids: List[str], auth_token: str, port: int):
         headers = {
@@ -159,10 +182,11 @@ class ModelTestingManager:
                 finally:
                     self.tested_count += 1
                     self.elapsed_seconds = round(time.time() - self.start_time, 1)
-                    self.save_results_files()
+                    await self.request_save()
 
         await asyncio.gather(*(test_single_model(m_id) for m_id in model_ids))
         self.is_running = False
+        await self.request_save()
 
     def save_results_files(self):
         # Build working and failed lists

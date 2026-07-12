@@ -355,7 +355,14 @@ class TelegramRuntime:
 
         # Make sure no directory traversal is possible
         dest_path = os.path.normpath(os.path.abspath(dest_path))
-        if not dest_path.startswith(os.path.normpath(os.path.abspath(workspace_dir))):
+        base_abs = os.path.normpath(os.path.abspath(workspace_dir))
+        try:
+            common = os.path.commonpath([base_abs, dest_path])
+            is_contained = os.path.normpath(common) == base_abs
+        except Exception:
+            is_contained = False
+
+        if not is_contained:
             await message.reply_text("❌ Invalid destination path.")
             return
 

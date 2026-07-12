@@ -347,11 +347,14 @@ class MessagingWorkflow:
             chat_id=incoming.chat_id,
             node_id=incoming.message_id,
         ):
-            key = (incoming.platform, incoming.chat_id)
-            if hasattr(self, "_user_states") and key in self._user_states:
+            key = (incoming.platform, incoming.chat_id, incoming.user_id)
+            if incoming.text and incoming.text.startswith("/"):
+                if hasattr(self, "_user_states") and key in self._user_states:
+                    del self._user_states[key]
+            elif hasattr(self, "_user_states") and key in self._user_states:
                 state = self._user_states[key]
                 mode = state.get("mode")
-                if mode == "awaiting_manual_model" and incoming.text and not incoming.text.startswith("/"):
+                if mode == "awaiting_manual_model" and incoming.text:
                     del self._user_states[key]
                     model_path = incoming.text.strip()
                     if self.apply_config:
@@ -368,7 +371,7 @@ class MessagingWorkflow:
                                 incoming.platform, incoming.chat_id, msg_id, "command"
                             )
                     return
-                elif mode == "awaiting_model_search" and incoming.text and not incoming.text.startswith("/"):
+                elif mode == "awaiting_model_search" and incoming.text:
                     del self._user_states[key]
                     query_str = incoming.text.strip().lower()
                     current_model = ""
@@ -766,6 +769,10 @@ class MessagingWorkflow:
         user_id = str(query.from_user.id)
         msg_id = str(query.message.message_id)
 
+        key = ("telegram", chat_id, user_id)
+        if hasattr(self, "_user_states") and key in self._user_states:
+            del self._user_states[key]
+
         if data.startswith("stop_task:"):
             # A stop button click
             node_id = data.split(":", 1)[1]
@@ -876,7 +883,7 @@ class MessagingWorkflow:
                 pass
 
         elif data == "model_search":
-            key = ("telegram", chat_id)
+            key = ("telegram", chat_id, user_id)
             if not hasattr(self, "_user_states"):
                 self._user_states = {}
             self._user_states[key] = {"mode": "awaiting_model_search"}
@@ -890,7 +897,7 @@ class MessagingWorkflow:
                 pass
 
         elif data == "model_manual":
-            key = ("telegram", chat_id)
+            key = ("telegram", chat_id, user_id)
             if not hasattr(self, "_user_states"):
                 self._user_states = {}
             self._user_states[key] = {"mode": "awaiting_manual_model"}
@@ -907,7 +914,8 @@ class MessagingWorkflow:
             pass
 
         elif data.startswith("model_set:"):
-            model_path = data.split(":", 1)[1]
+            from free_claude_code.messaging.keyboards import get_registered_path
+            model_path = get_registered_path(data) or data.split(":", 1)[1]
             if self.apply_config:
                 await self.apply_config({"model": model_path, "model_opus": model_path})
                 current_model = model_path
@@ -952,7 +960,8 @@ class MessagingWorkflow:
                     pass
 
         elif data.startswith("workspace_ls:"):
-            rel_path = data.split(":", 1)[1]
+            from free_claude_code.messaging.keyboards import get_registered_path
+            rel_path = get_registered_path(data) or data.split(":", 1)[1]
             workspace_dir = getattr(self.cli_manager, "workspace", None)
             if workspace_dir:
                 from free_claude_code.messaging.keyboards import make_workspace_keyboard
@@ -966,13 +975,20 @@ class MessagingWorkflow:
                         pass
 
         elif data.startswith("workspace_view:"):
-            rel_path = data.split(":", 1)[1]
+            from free_claude_code.messaging.keyboards import get_registered_path
+            rel_path = get_registered_path(data) or data.split(":", 1)[1]
             workspace_dir = getattr(self.cli_manager, "workspace", None)
             if workspace_dir:
                 import os
-                abs_path = os.path.normpath(os.path.abspath(os.path.join(workspace_dir, rel_path)))
-                base_abs = os.path.normpath(os.path.abspath(workspace_dir))
-                if abs_path.startswith(base_abs) and os.path.exists(abs_path) and os.path.isfile(abs_path):
+                base_abs = os.path.realpath(os.path.abspath(workspace_dir))
+                abs_path = os.path.realpath(os.path.abspath(os.path.join(base_abs, rel_path)))
+                try:
+                    common = os.path.commonpath([base_abs, abs_path])
+                    is_contained = os.path.realpath(common) == base_abs
+                except Exception:
+                    is_contained = False
+
+                if is_contained and os.path.exists(abs_path) and os.path.isfile(abs_path):
                     try:
                         with open(abs_path, "rb") as f:
                             await query.message.reply_document(document=f, filename=os.path.basename(abs_path))
