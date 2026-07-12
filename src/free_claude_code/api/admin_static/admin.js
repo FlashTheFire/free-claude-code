@@ -14,6 +14,7 @@ const VIEW_GROUPS = [
     title: "Providers",
     sections: ["providers", "runtime"],
     containerId: "providersSections",
+    icon: `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>`,
   },
   {
     id: "model_config",
@@ -21,6 +22,7 @@ const VIEW_GROUPS = [
     title: "Model Config",
     sections: ["models", "thinking", "web_tools"],
     containerId: "modelConfigSections",
+    icon: `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`,
   },
   {
     id: "messaging",
@@ -28,6 +30,7 @@ const VIEW_GROUPS = [
     title: "Messaging",
     sections: ["messaging", "voice"],
     containerId: "messagingSections",
+    icon: `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`,
   },
   {
     id: "model_validator",
@@ -35,6 +38,7 @@ const VIEW_GROUPS = [
     title: "Model Validator",
     sections: [],
     containerId: "modelValidatorSections",
+    icon: `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 11.08 22 12 12 22 2 12 12 2"></polyline><path d="M22 4L12 14.01l-3-3"></path></svg>`,
   },
 ];
 
@@ -106,7 +110,19 @@ function renderNav() {
     button.type = "button";
     button.className = `nav-link${index === 0 ? " active" : ""}`;
     button.dataset.view = view.id;
-    button.textContent = view.label;
+    
+    // Add icon span
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "nav-link-icon";
+    iconSpan.innerHTML = view.icon;
+    
+    // Add text span
+    const textSpan = document.createElement("span");
+    textSpan.className = "nav-link-text";
+    textSpan.textContent = view.label;
+    
+    button.append(iconSpan, textSpan);
+    
     if (index === 0) {
       button.setAttribute("aria-current", "page");
     }
@@ -520,7 +536,16 @@ async function initModelValidator() {
         checkbox.className = "model-checkbox";
         
         const modelSpan = document.createElement("span");
-        modelSpan.textContent = model.includes("/") ? model.split("/").slice(1).join("/") : model;
+        let displayName = model;
+        if (displayName.startsWith("anthropic/")) {
+          displayName = displayName.substring("anthropic/".length);
+        } else if (displayName.startsWith("claude-3-freecc-no-thinking/")) {
+          displayName = displayName.substring("claude-3-freecc-no-thinking/".length);
+        }
+        if (displayName.startsWith(provider + "/")) {
+          displayName = displayName.substring(provider.length + 1);
+        }
+        modelSpan.textContent = displayName;
         modelSpan.title = model;
         
         item.append(checkbox, modelSpan);
@@ -790,6 +815,22 @@ async function pollValidatorStatus() {
 
 byId("validateButton").addEventListener("click", () => validate(true));
 byId("applyButton").addEventListener("click", apply);
+
+// Sidebar Toggle Logic
+const toggleBtn = byId("sidebarToggle");
+if (toggleBtn) {
+  toggleBtn.addEventListener("click", () => {
+    const shell = document.querySelector(".app-shell");
+    const isCollapsed = shell.classList.toggle("collapsed");
+    localStorage.setItem("sidebar-collapsed", isCollapsed ? "true" : "false");
+  });
+}
+
+// Restore collapsed state on load
+if (localStorage.getItem("sidebar-collapsed") === "true") {
+  const shell = document.querySelector(".app-shell");
+  if (shell) shell.classList.add("collapsed");
+}
 
 load().catch((error) => {
   showMessage(error.message, "error");

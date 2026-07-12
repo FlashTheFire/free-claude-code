@@ -213,15 +213,21 @@ async def get_testable_models(
 ):
     require_loopback_admin(request)
     from free_claude_code.api.model_catalog import build_models_list_response
+    from free_claude_code.core.gateway_model_ids import decode_gateway_model_id
     resp = build_models_list_response(settings, services.requests)
     
     # Group models by provider
     grouped = {}
     for m in resp.data:
         m_id = m.id
-        provider = "compatibility"
-        if "/" in m_id:
-            provider = m_id.split("/", 1)[0]
+        decoded = decode_gateway_model_id(m_id)
+        if decoded:
+            provider = decoded.provider_id
+        else:
+            provider = "compatibility"
+            if "/" in m_id:
+                provider = m_id.split("/", 1)[0]
+                
         if provider not in grouped:
             grouped[provider] = []
         grouped[provider].append(m_id)

@@ -11,11 +11,19 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">FC</div>
-          <div>
-            <h1>Free Claude Code</h1>
-            <p>Server Control</p>
+          <div class="brand-logo">
+            <div class="brand-mark">FC</div>
+            <div class="brand-text">
+              <h1>Free Claude Code</h1>
+              <p>Server Control</p>
+            </div>
           </div>
+          <button type="button" id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </button>
         </div>
         <nav id="sectionNav" class="section-nav" aria-label="Admin views"></nav>
       </aside>
