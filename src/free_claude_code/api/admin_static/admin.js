@@ -193,7 +193,10 @@ function updateProviderCard(providerId, status, label, metaText) {
 
 function renderSections(sections, fields) {
   VIEW_GROUPS.forEach((view) => {
-    byId(view.containerId).innerHTML = "";
+    const container = byId(view.containerId);
+    if (container) {
+      container.innerHTML = "";
+    }
   });
 
   const sectionById = new Map(sections.map((section) => [section.id, section]));
@@ -206,6 +209,7 @@ function renderSections(sections, fields) {
 
   VIEW_GROUPS.forEach((view) => {
     const container = byId(view.containerId);
+    if (!container) return;
     view.sections.forEach((sectionId) => {
       const section = sectionById.get(sectionId);
       const sectionFields = bySection.get(sectionId) || [];
