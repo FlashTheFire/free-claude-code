@@ -316,7 +316,7 @@ class TelegramRuntime:
             return
 
         user_id = str(query.from_user.id)
-        if self.allowed_user_id and user_id != str(self.allowed_user_id).strip():
+        if self.allowed_user_id and user_id != self.allowed_user_id.strip():
             logger.warning("Unauthorized callback query attempt from {}", user_id)
             await query.answer("Unauthorized", show_alert=True)
             return
@@ -337,7 +337,7 @@ class TelegramRuntime:
             return
 
         user_id = str(update.effective_user.id)
-        if self.allowed_user_id and user_id != str(self.allowed_user_id).strip():
+        if self.allowed_user_id and user_id != self.allowed_user_id.strip():
             logger.warning("Unauthorized document upload attempt from {}", user_id)
             return
 
@@ -374,10 +374,11 @@ class TelegramRuntime:
 
         try:
             tg_file = await context.bot.get_file(document.file_id)
-            if hasattr(tg_file, "download_to_drive"):
-                await tg_file.download_to_drive(dest_path)
-            else:
-                await tg_file.download(dest_path)
+            download_fn = getattr(tg_file, "download_to_drive", None) or getattr(
+                tg_file, "download", None
+            )
+            if download_fn:
+                await download_fn(dest_path)
         except Exception as e:
             logger.error("Failed to download document: {}", e)
             await message.reply_text(f"❌ Failed to download file: {e}")
