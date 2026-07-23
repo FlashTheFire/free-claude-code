@@ -43,6 +43,27 @@ class ModelRouter:
         self._settings = settings
 
     def resolve(self, claude_model_name: str) -> ResolvedModel:
+        # Fallback for deprecated model chosen by alphabetical sorting in Claude Desktop
+        if "adept/fuyu-8b" in claude_model_name:
+            claude_model_name = "anthropic/claude-nvidia_nim/meta/llama-3.1-8b-instruct"
+
+        # Pre-process custom mapped Claude Desktop models
+        name_lower = claude_model_name.lower()
+        if claude_model_name == "claude-sonnet-4-6":
+            claude_model_name = "anthropic/iamhc/DeepSeek-V4-Flash"
+        elif claude_model_name == "claude-opus-4-6":
+            claude_model_name = "anthropic/iamhc/Kimi-K2.6"
+        elif claude_model_name == "claude-haiku-4-6":
+            claude_model_name = "anthropic/iamhc/Qwen3-Coder-Next-FP8"
+        elif "feepseek-v4-pro-fable" in name_lower:
+            claude_model_name = "anthropic/iamhc/DeepSeek-V4-Pro"
+        elif (
+            "fimi-k_2.6-fable" in name_lower
+            or "fimi-k_2-fable" in name_lower
+            or "fimi-k-fable" in name_lower
+        ):
+            claude_model_name = "anthropic/iamhc/Kimi-K2.6"
+
         (
             direct_provider_id,
             direct_provider_model,

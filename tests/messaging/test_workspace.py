@@ -1,11 +1,12 @@
 import os
 import tempfile
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from free_claude_code.messaging.models import IncomingMessage
+import pytest
+
 from free_claude_code.messaging.commands import handle_workspace_command
 from free_claude_code.messaging.keyboards import make_workspace_keyboard
+from free_claude_code.messaging.models import IncomingMessage
 
 
 @pytest.mark.asyncio
@@ -24,8 +25,17 @@ async def test_make_workspace_keyboard_root():
         buttons = kb.inline_keyboard
         assert len(buttons) >= 3
         from free_claude_code.messaging.keyboards import get_registered_path
-        assert any(get_registered_path(btn.callback_data) == "subdir" for row in buttons for btn in row)
-        assert any(get_registered_path(btn.callback_data) == "file.txt" for row in buttons for btn in row)
+
+        assert any(
+            get_registered_path(btn.callback_data) == "subdir"
+            for row in buttons
+            for btn in row
+        )
+        assert any(
+            get_registered_path(btn.callback_data) == "file.txt"
+            for row in buttons
+            for btn in row
+        )
 
 
 @pytest.mark.asyncio
@@ -75,18 +85,18 @@ async def test_handle_workspace_command_non_telegram():
     await handle_workspace_command(handler, incoming)
 
     handler.outbound.queue_send_message.assert_called_once()
-    args, kwargs = handler.outbound.queue_send_message.call_args
+    args, _kwargs = handler.outbound.queue_send_message.call_args
     assert "only supported on Telegram" in args[1]
 
 
 @pytest.mark.asyncio
 async def test_telegram_document_upload():
     from free_claude_code.messaging.platforms.telegram import TelegramRuntime
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         limiter = MagicMock()
         transcriber = MagicMock()
-        
+
         runtime = TelegramRuntime(
             bot_token="test_token",
             allowed_user_id="12345",
@@ -104,7 +114,7 @@ async def test_telegram_document_upload():
         update.message.document.file_name = "test_upload.py"
         update.message.document.file_id = "file_id_abc"
         update.message.reply_text = AsyncMock()
-        
+
         context = MagicMock()
         mock_file = MagicMock()
         mock_file.download_to_drive = AsyncMock()
@@ -120,6 +130,7 @@ async def test_telegram_document_upload():
 
 def test_make_start_keyboard():
     from free_claude_code.messaging.keyboards import make_start_keyboard
+
     kb = make_start_keyboard()
     assert kb is not None
     buttons = kb.inline_keyboard
@@ -131,22 +142,31 @@ def test_make_start_keyboard():
 
 def test_make_model_keyboard_pagination():
     from free_claude_code.messaging.keyboards import make_model_keyboard
+
     text, kb = make_model_keyboard("zenmux/x-ai/grok-4.5-free", page=0)
     assert "grok-4.5-free" in text
     assert kb is not None
     buttons = kb.inline_keyboard
     # Grok 4.5 is the active one, should have ✅
-    assert any("✅" in btn.text and "Grok" in btn.text for row in buttons for btn in row)
+    assert any(
+        "✅" in btn.text and "Grok" in btn.text for row in buttons for btn in row
+    )
     # Next button should be present
     assert any("Next" in btn.text for row in buttons for btn in row)
 
 
 def test_make_model_keyboard_search():
     from free_claude_code.messaging.keyboards import make_model_keyboard
+
     text, kb = make_model_keyboard("", page=0, search_query="DeepSeek")
     assert "DeepSeek" in text
     assert kb is not None
     buttons = kb.inline_keyboard
     assert any("DeepSeek" in btn.text for row in buttons for btn in row)
     # Total count matches filtered search results
-    assert "of 3 models" in text or "of 2 models" in text or "of 4 models" in text or "models" in text
+    assert (
+        "of 3 models" in text
+        or "of 2 models" in text
+        or "of 4 models" in text
+        or "models" in text
+    )

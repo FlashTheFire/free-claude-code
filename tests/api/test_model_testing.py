@@ -1,14 +1,16 @@
-import pytest
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
-from tests.api.support import create_test_app
+
 from free_claude_code.api.model_testing import testing_manager
+from tests.api.support import create_test_app
 
 app = create_test_app()
 
+
 def test_model_testing_routes_success():
     client = TestClient(app, client=("127.0.0.1", 50000))
-    
+
     # Reset state to be clean before test
     testing_manager.is_running = False
     testing_manager.total_models = 0
@@ -27,8 +29,7 @@ def test_model_testing_routes_success():
     # 2. Run model tests with mocked start_test
     with patch.object(testing_manager, "start_test", return_value=True) as mock_start:
         run_response = client.post(
-            "/admin/api/test-models/run",
-            json={"models": ["deepseek/deepseek-chat"]}
+            "/admin/api/test-models/run", json={"models": ["deepseek/deepseek-chat"]}
         )
         assert run_response.status_code == 200
         run_data = run_response.json()
@@ -37,10 +38,9 @@ def test_model_testing_routes_success():
         mock_start.assert_called_once_with(["deepseek/deepseek-chat"], "", 8082)
 
     # Test the already_running scenario (returns 409 conflict when start_test returns False)
-    with patch.object(testing_manager, "start_test", return_value=False) as mock_start_running:
+    with patch.object(testing_manager, "start_test", return_value=False):
         run_response = client.post(
-            "/admin/api/test-models/run",
-            json={"models": ["deepseek/deepseek-chat"]}
+            "/admin/api/test-models/run", json={"models": ["deepseek/deepseek-chat"]}
         )
         assert run_response.status_code == 409
         run_data = run_response.json()

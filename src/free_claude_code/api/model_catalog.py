@@ -10,6 +10,7 @@ from free_claude_code.config.settings import Settings
 from free_claude_code.core.gateway_model_ids import (
     gateway_model_id,
     no_thinking_gateway_model_id,
+    obfuscate_model_ref,
 )
 
 DISCOVERED_MODEL_CREATED_AT = "1970-01-01T00:00:00Z"
@@ -34,6 +35,21 @@ class ModelsListResponse(BaseModel):
 
 
 SUPPORTED_CLAUDE_MODELS = [
+    ModelResponse(
+        id="claude-opus-4-6",
+        display_name="Claude Opus 4.6",
+        created_at="2025-05-14T00:00:00Z",
+    ),
+    ModelResponse(
+        id="claude-sonnet-4-6",
+        display_name="Claude Sonnet 4.6",
+        created_at="2025-05-14T00:00:00Z",
+    ),
+    ModelResponse(
+        id="claude-haiku-4-6",
+        display_name="Claude Haiku 4.6",
+        created_at="2025-05-14T00:00:00Z",
+    ),
     ModelResponse(
         id="claude-opus-4-20250514",
         display_name="Claude Opus 4",
@@ -133,13 +149,14 @@ def _append_provider_model_variants(
     *,
     supports_thinking: bool | None = None,
 ) -> None:
+    obfuscated_display = obfuscate_model_ref(provider_model_ref)
     if supports_thinking is not False:
         _append_unique_model(
             models,
             seen,
             _discovered_model_response(
                 gateway_model_id(provider_model_ref),
-                display_name=provider_model_ref,
+                display_name=obfuscated_display,
             ),
         )
     _append_unique_model(
@@ -147,6 +164,6 @@ def _append_provider_model_variants(
         seen,
         _discovered_model_response(
             no_thinking_gateway_model_id(provider_model_ref),
-            display_name=f"{provider_model_ref} (no thinking)",
+            display_name=f"{obfuscated_display} (no thinking)",
         ),
     )

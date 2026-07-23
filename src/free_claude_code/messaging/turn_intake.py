@@ -96,6 +96,7 @@ class MessagingTurnIntake:
             reply_markup = None
             if incoming.platform == "telegram":
                 from free_claude_code.messaging.keyboards import make_stop_keyboard
+
                 reply_markup = make_stop_keyboard(node_id)
             status_msg_id = await self.outbound.queue_send_message(
                 incoming.chat_id,

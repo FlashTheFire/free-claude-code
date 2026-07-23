@@ -75,12 +75,21 @@ class ProviderRateLimiter:
         # A reactive deadline can be installed or extended while this task waits
         # for proactive capacity. Commit the proactive timestamp only if that
         # deadline is still clear, so retries neither burst nor consume unused quota.
+        t0 = time.monotonic()
         waited_reactively = False
         while True:
             waited_reactively = (
                 await self._wait_for_reactive_block() or waited_reactively
             )
             if await self._proactive_limiter.acquire_if(lambda: not self.is_blocked()):
+                elapsed_ms = (time.monotonic() - t0) * 1000
+                if elapsed_ms > 50:
+                    logger.info(
+                        "Rate limiter admitted request after {:.1f}ms"
+                        " (reactive_wait={})",
+                        elapsed_ms,
+                        waited_reactively,
+                    )
                 return waited_reactively
 
     async def _wait_for_reactive_block(self) -> bool:
@@ -136,9 +145,9 @@ class ProviderRateLimiter:
         *args: Any,
         provider_failure_override: ProviderFailureOverride | None = None,
         max_retries: int = DEFAULT_UPSTREAM_MAX_RETRIES,
-        base_delay: float = 2.0,
-        max_delay: float = 60.0,
-        jitter: float = 1.0,
+        base_delay: float = 1.0,
+        max_delay: float = 30.0,
+        jitter: float = 0.5,
         **kwargs: Any,
     ) -> Any:
         """Execute an async callable with rate limiting and retry on transient limits.

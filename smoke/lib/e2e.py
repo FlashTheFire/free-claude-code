@@ -403,6 +403,7 @@ class FakePlatform:
         parse_mode: str | None = None,
         fire_and_forget: bool = True,
         message_thread_id: str | None = None,
+        reply_markup: Any | None = None,
     ) -> str | None:
         message_id = await self.send_message(
             chat_id,
@@ -420,6 +421,7 @@ class FakePlatform:
         text: str,
         parse_mode: str | None = None,
         fire_and_forget: bool = True,
+        reply_markup: Any | None = None,
     ) -> None:
         await self.edit_message(chat_id, message_id, text, parse_mode=parse_mode)
 
@@ -535,6 +537,10 @@ class FakeCLIManager:
         self.registered: list[tuple[str, str]] = []
         self.removed: list[str] = []
         self.stopped = False
+
+    @property
+    def workspace(self) -> str:
+        return "/tmp/workspace"
 
     async def get_or_create_session(
         self, session_id: str | None = None

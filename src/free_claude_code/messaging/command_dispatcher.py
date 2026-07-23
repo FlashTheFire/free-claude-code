@@ -5,10 +5,10 @@ from .commands import (
     handle_clear_command,
     handle_model_command,
     handle_settings_command,
+    handle_start_command,
     handle_stats_command,
     handle_stop_command,
     handle_workspace_command,
-    handle_start_command,
 )
 from .models import IncomingMessage
 

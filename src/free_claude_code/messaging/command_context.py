@@ -1,7 +1,7 @@
 """Typed dependency surface for messaging slash commands."""
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from .managed_protocols import ManagedClaudeSessionManagerProtocol
 from .models import MessageScope
@@ -93,6 +93,10 @@ class MessagingCommandContext(Protocol):
         kind: str,
     ) -> bool:
         """Record an outgoing platform message ID and report registry ownership."""
+        ...
+
+    def get_settings(self) -> Any:
+        """Return the current application settings."""
         ...
 
 

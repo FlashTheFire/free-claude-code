@@ -1,5 +1,6 @@
-"""Ingress-owned HTTP request correlation."""
+"""Ingress-owned HTTP request correlation and timing."""
 
+import time
 import uuid
 
 from fastapi import Request, Response
@@ -14,9 +15,12 @@ OPENAI_REQUEST_ID_HEADER = "x-request-id"
 _REQUEST_ID_STATE_ATTRIBUTE = "fcc_request_id"
 _OPENAI_REQUEST_ID_PATHS = frozenset({"/v1/responses", "/v1/models"})
 
+# Paths that are high-frequency health checks — skip timing logs.
+_SILENT_TIMING_PATHS = frozenset({"/health", "/admin/api/config"})
+
 
 class RequestCorrelationMiddleware:
-    """Own one request id and logging context for the full ASGI response."""
+    """Own one request id, logging context, and timing for the full ASGI response."""
 
     def __init__(self, app: ASGIApp) -> None:
         self._app = app
@@ -39,7 +43,11 @@ class RequestCorrelationMiddleware:
         request_headers = Headers(scope=scope)
         claude_sid = extract_claude_session_id_from_headers(request_headers)
 
+        t0 = time.monotonic()
+        response_status: int | None = None
+
         async def send_with_correlation(message: Message) -> None:
+            nonlocal response_status
             if message["type"] == "http.response.start":
                 message = dict(message)
                 raw_headers = list(message.get("headers", ()))
@@ -49,6 +57,7 @@ class RequestCorrelationMiddleware:
                     path=path,
                 )
                 message["headers"] = raw_headers
+                response_status = message.get("status")
             await send(message)
 
         with logger.contextualize(
@@ -58,6 +67,17 @@ class RequestCorrelationMiddleware:
             request_id=request_id,
         ):
             await self._app(scope, receive, send_with_correlation)
+
+            # Emit a single structured timing line for non-trivial requests.
+            if path not in _SILENT_TIMING_PATHS:
+                elapsed_ms = (time.monotonic() - t0) * 1000
+                logger.info(
+                    "REQUEST_COMPLETE method={} path={} status={} elapsed_ms={:.1f}",
+                    method,
+                    path,
+                    response_status,
+                    elapsed_ms,
+                )
 
 
 def new_request_id() -> str:

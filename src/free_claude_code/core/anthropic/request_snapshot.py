@@ -2,7 +2,11 @@
 
 from typing import Any
 
-from free_claude_code.core.trace import sanitize_trace_value
+from free_claude_code.core.trace import (
+    redact_messages_list,
+    redact_system_prompt,
+    sanitize_trace_value,
+)
 
 from .models import MessagesRequest, TokenCountRequest
 
@@ -32,5 +36,9 @@ def anthropic_request_snapshot(
         )
         if key in data and data[key] is not None
     }
+    if "messages" in snapshot:
+        snapshot["messages"] = redact_messages_list(snapshot["messages"])
+    if "system" in snapshot:
+        snapshot["system"] = redact_system_prompt(snapshot["system"])
     sanitized = sanitize_trace_value(snapshot)
     return sanitized if isinstance(sanitized, dict) else {}

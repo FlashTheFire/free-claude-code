@@ -204,6 +204,10 @@ class Settings(BaseSettings):
     enable_suggestion_mode_skip: bool = True
     enable_filepath_extraction_mock: bool = True
 
+    # ==================== Performance Tuning ====================
+    tracing_enabled: bool = Field(default=True, validation_alias="FCC_TRACING")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+
     # ==================== Local web server tools (web_search / web_fetch) ====================
     # Off by default: these tools perform outbound HTTP from the proxy (SSRF risk).
     enable_web_server_tools: bool = Field(
@@ -345,7 +349,7 @@ class Settings(BaseSettings):
     def validate_messaging_rate_window(cls, v: float) -> float:
         if v <= 0:
             raise ValueError("messaging_rate_window must be > 0")
-        return float(v)
+        return v
 
     @field_validator("web_fetch_allowed_schemes")
     @classmethod

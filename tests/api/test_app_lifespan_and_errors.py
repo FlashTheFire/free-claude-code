@@ -247,7 +247,9 @@ async def test_runtime_asgi_app_handles_cancelled_error_gracefully() -> None:
     app = RuntimeASGIApp(AsyncMock(), runtime)
 
     # Calling the app under lifespan should handle CancelledError and complete without raising it
-    receive = AsyncMock(side_effect=asyncio.CancelledError("Graceful shutdown cancellation"))
+    receive = AsyncMock(
+        side_effect=asyncio.CancelledError("Graceful shutdown cancellation")
+    )
     await app({"type": "lifespan"}, receive, AsyncMock())
 
 
@@ -322,6 +324,7 @@ def test_bootstrap_configures_default_log_and_publishes_only_services(tmp_path):
     configure.assert_called_once_with(
         Path(log_path),
         verbose_third_party=settings.log_raw_api_payloads,
+        log_level=settings.log_level,
     )
     api_app = cast(FastAPI, asgi_app.app)
     assert set(api_app.state._state) == {"services"}

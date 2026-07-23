@@ -143,7 +143,11 @@ def test_generated_catalog_schema_is_accepted_by_installed_codex(
     tmp_path: Path,
 ) -> None:
     codex_binary = shutil.which("codex")
-    if codex_binary is None or "PythonSoftwareFoundation" in codex_binary or "site-packages" in codex_binary:
+    if (
+        codex_binary is None
+        or "PythonSoftwareFoundation" in codex_binary
+        or "site-packages" in codex_binary
+    ):
         pytest.skip("Codex CLI is not installed or is an unrelated package")
 
     catalog_path = tmp_path / "codex-model-catalog.json"

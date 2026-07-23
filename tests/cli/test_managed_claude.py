@@ -1,12 +1,7 @@
 import os
 from unittest.mock import patch
-import pytest
 
-@pytest.fixture
-def mock_shutil_which():
-    with patch("shutil.which") as mock:
-        mock.return_value = "claude"
-        yield mock
+import pytest
 
 from free_claude_code.cli.managed.claude import (
     MANAGED_CLAUDE_MODEL_TIER,
@@ -19,6 +14,13 @@ from free_claude_code.cli.managed.claude import (
     parse_managed_claude_stdout_line,
 )
 from free_claude_code.cli.managed.diagnostics import classify_managed_claude_stderr
+
+
+@pytest.fixture
+def mock_shutil_which():
+    with patch("shutil.which") as mock:
+        mock.return_value = "claude"
+        yield mock
 
 
 def _config(**overrides: object) -> ManagedClaudeConfig:

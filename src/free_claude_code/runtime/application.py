@@ -401,8 +401,9 @@ class ApplicationRuntime:
         self._messaging_workflow = workflow
         workflow.restore()
         components.runtime.on_message(workflow.handle_message)
-        if hasattr(components.runtime, "on_callback_query"):
-            components.runtime.on_callback_query(workflow.handle_callback_query)
+        on_cb = getattr(components.runtime, "on_callback_query", None)
+        if callable(on_cb):
+            on_cb(workflow.handle_callback_query)
         await components.runtime.start()
         await workflow.repair_restored_statuses()
         if components.startup_notice is not None:

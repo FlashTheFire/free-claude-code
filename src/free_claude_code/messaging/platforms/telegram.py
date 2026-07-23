@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import os
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 # Opt-in to future behavior for python-telegram-bot (retry_after as timedelta).
 os.environ["PTB_TIMEDELTA"] = "1"
@@ -28,11 +29,11 @@ try:
     from telegram import Update
     from telegram.ext import (
         Application,
+        CallbackQueryHandler,
         CommandHandler,
         ContextTypes,
         MessageHandler,
         filters,
-        CallbackQueryHandler,
     )
     from telegram.request import HTTPXRequest
 
@@ -144,7 +145,9 @@ class TelegramRuntime:
             MessageHandler(filters.COMMAND, self._on_telegram_message)
         )
         application.add_handler(MessageHandler(filters.VOICE, self._on_telegram_voice))
-        application.add_handler(MessageHandler(filters.Document.ALL, self._on_telegram_document))
+        application.add_handler(
+            MessageHandler(filters.Document.ALL, self._on_telegram_document)
+        )
         application.add_handler(CallbackQueryHandler(self._on_callback_query))
 
         await self._retry_connection_step(
@@ -340,13 +343,16 @@ class TelegramRuntime:
 
         # Fetch allowed workspace directory from the active messaging workflow
         workspace_dir = None
-        if self._message_handler and hasattr(self._message_handler, "__self__"):
-            workflow = self._message_handler.__self__
-            if hasattr(workflow, "cli_manager") and workflow.cli_manager:
-                workspace_dir = workflow.cli_manager.workspace
+        if self._message_handler:
+            workflow = getattr(self._message_handler, "__self__", None)
+            cli_mgr = getattr(workflow, "cli_manager", None)
+            if cli_mgr:
+                workspace_dir = getattr(cli_mgr, "workspace", None)
 
         if not workspace_dir:
-            await message.reply_text("❌ Workspace directory not found or not initialized.")
+            await message.reply_text(
+                "❌ Workspace directory not found or not initialized."
+            )
             return
 
         document = message.document

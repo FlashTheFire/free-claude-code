@@ -1,18 +1,18 @@
 """Interactive inline keyboard builders for Telegram Bot."""
 
-import typing
 from typing import Any
 
 try:
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 except ImportError:
-    InlineKeyboardButton = None
-    InlineKeyboardMarkup = None
+    InlineKeyboardButton: Any = None
+    InlineKeyboardMarkup: Any = None
 
 
 import hashlib
 
 _callback_registry = {}
+
 
 def register_callback_path(prefix: str, path: str) -> str:
     """Register a path and return a unique short callback data key under 64 bytes."""
@@ -20,6 +20,7 @@ def register_callback_path(prefix: str, path: str) -> str:
     key = f"{prefix}:{h}"
     _callback_registry[key] = path
     return key
+
 
 def get_registered_path(key: str) -> str | None:
     return _callback_registry.get(key)
@@ -65,7 +66,7 @@ def make_start_keyboard() -> Any:
         ],
         [
             InlineKeyboardButton("⏹ Stop Active Tasks", callback_data="menu_stop"),
-        ]
+        ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -77,28 +78,27 @@ ALL_MODELS = [
     ("MiniMax M2.7 🤖 (Iamhc)", "iamhc/MiniMax-M2.7"),
     ("GLM 4 9B 🧠 (Nvidia NIM)", "nvidia_nim/z-ai/glm-4-9b-chat"),
     ("Nemotron 3 🦾 (Nvidia NIM)", "nvidia_nim/nvidia/nemotron-3-super-120b-a12b"),
-    
     # Page 2: OpenAI-Compatible / Gateway
     ("Codestral Latest (Mistral)", "mistral_codestral/codestral-latest"),
     ("DeepSeek Chat (DeepSeek)", "deepseek/deepseek-chat"),
     ("OpenRouter Free (OpenRouter)", "open_router/openrouter/free"),
     ("Command R+ (Cohere)", "cohere/command-a-plus-05-2026"),
     ("GPT-4o (GitHub Models)", "github_models/openai/gpt-4.o"),
-
     # Page 3: Gateway & Gemini
     ("Gemini 2.5 Flash (Gemini)", "gemini/models/gemini-2.5-flash"),
     ("Llama 3.3 70B (Groq)", "groq/llama-3.3-70b-versatile"),
     ("DeepSeek V4 Pro (Wafer)", "wafer/DeepSeek-V4-Pro"),
     ("Kimi K2.5 (Kimi)", "kimi/kimi-k2.5"),
     ("MiniMax M3 (MiniMax)", "minimax/MiniMax-M3"),
-
     # Page 4: Inference Providers
     ("Qwen 72B (Sambanova)", "sambanova/Qwen2.5-72B-Instruct"),
-    ("Llama 3.3 70B (Fireworks)", "fireworks/accounts/fireworks/models/llama-v3p3-70b-instruct"),
+    (
+        "Llama 3.3 70B (Fireworks)",
+        "fireworks/accounts/fireworks/models/llama-v3p3-70b-instruct",
+    ),
     ("Kimi K2.6 (Cloudflare)", "cloudflare/@cf/moonshotai/kimi-k2.6"),
     ("GLM 5.2 (Z.ai)", "zai/glm-5.2"),
     ("Mistral Small (Mistral)", "mistral/mistral-small-latest"),
-
     # Page 5: Local Providers
     ("LM Studio Local", "lmstudio/<model-id>"),
     ("llama.cpp Local", "llamacpp/<model-id>"),
@@ -106,7 +106,9 @@ ALL_MODELS = [
 ]
 
 
-def make_model_keyboard(current_model: str, page: int = 0, search_query: str = "") -> tuple[str, Any]:
+def make_model_keyboard(
+    current_model: str, page: int = 0, search_query: str = ""
+) -> tuple[str, Any]:
     """Build a paginated model selection keyboard, highlighting selection and supporting search."""
     if InlineKeyboardButton is None or InlineKeyboardMarkup is None:
         return "", None
@@ -116,7 +118,8 @@ def make_model_keyboard(current_model: str, page: int = 0, search_query: str = "
     if search_query:
         query_lower = search_query.strip().lower()
         filtered = [
-            (name, path) for name, path in ALL_MODELS
+            (name, path)
+            for name, path in ALL_MODELS
             if query_lower in name.lower() or query_lower in path.lower()
         ]
 
@@ -135,22 +138,34 @@ def make_model_keyboard(current_model: str, page: int = 0, search_query: str = "
     for name, path in page_items:
         prefix = "✅ " if current_model == path else "⬜ "
         cb_data = register_callback_path("model_set", path)
-        keyboard.append([InlineKeyboardButton(f"{prefix}{name}", callback_data=cb_data)])
+        keyboard.append(
+            [InlineKeyboardButton(f"{prefix}{name}", callback_data=cb_data)]
+        )
 
     # Add navigation row
     nav_row = []
     # Previous button
     if page > 0:
         q_cb = search_query[:15] if search_query else ""
-        nav_row.append(InlineKeyboardButton("◀️ Previous", callback_data=f"model_p:{page-1}:{q_cb}"))
-    
+        nav_row.append(
+            InlineKeyboardButton(
+                "◀️ Previous", callback_data=f"model_p:{page - 1}:{q_cb}"
+            )
+        )
+
     # Page indicator
-    nav_row.append(InlineKeyboardButton(f"Page {page+1}/{total_pages}", callback_data="model_noop"))
+    nav_row.append(
+        InlineKeyboardButton(
+            f"Page {page + 1}/{total_pages}", callback_data="model_noop"
+        )
+    )
 
     # Next button
     if page < total_pages - 1:
         q_cb = search_query[:15] if search_query else ""
-        nav_row.append(InlineKeyboardButton("Next ▶️", callback_data=f"model_p:{page+1}:{q_cb}"))
+        nav_row.append(
+            InlineKeyboardButton("Next ▶️", callback_data=f"model_p:{page + 1}:{q_cb}")
+        )
 
     keyboard.append(nav_row)
 
@@ -160,11 +175,15 @@ def make_model_keyboard(current_model: str, page: int = 0, search_query: str = "
         InlineKeyboardButton("✍️ Manual Entry", callback_data="model_manual"),
     ]
     if search_query:
-        action_row.append(InlineKeyboardButton("❌ Clear Search", callback_data="model_p:0:"))
+        action_row.append(
+            InlineKeyboardButton("❌ Clear Search", callback_data="model_p:0:")
+        )
     keyboard.append(action_row)
 
     # Main menu Back button
-    keyboard.append([InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start")])
+    keyboard.append(
+        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start")]
+    )
 
     # Text content
     text = "🤖 <b>Select Active Claude Model Override</b>:\n"
@@ -211,7 +230,7 @@ def make_settings_keyboard(
         [
             InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start"),
             InlineKeyboardButton("❌ Close Settings", callback_data="settings_close"),
-        ]
+        ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -223,6 +242,7 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
         A tuple of (text_content, InlineKeyboardMarkup)
     """
     import os
+
     if InlineKeyboardButton is None or InlineKeyboardMarkup is None:
         return "", None
 
@@ -257,8 +277,14 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
     if rel_path:
         parent_rel = os.path.dirname(rel_path)
         # Normalize relative path of parent
-        parent_rel = "" if parent_rel in [".", "..", ""] else parent_rel.replace("\\", "/")
-        cb_data = register_callback_path("workspace_ls", parent_rel) if parent_rel else "workspace_ls:"
+        parent_rel = (
+            "" if parent_rel in [".", "..", ""] else parent_rel.replace("\\", "/")
+        )
+        cb_data = (
+            register_callback_path("workspace_ls", parent_rel)
+            if parent_rel
+            else "workspace_ls:"
+        )
         keyboard.append([InlineKeyboardButton("🔙 .. (Back)", callback_data=cb_data)])
 
     dirs = []
@@ -282,10 +308,12 @@ def make_workspace_keyboard(workspace_dir: str, rel_path: str = "") -> tuple[str
         cb_data = register_callback_path("workspace_view", path)
         keyboard.append([InlineKeyboardButton(f"📄 {name}", callback_data=cb_data)])
 
-    keyboard.append([
-        InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start"),
-        InlineKeyboardButton("❌ Close Explorer", callback_data="settings_close")
-    ])
+    keyboard.append(
+        [
+            InlineKeyboardButton("🔙 Back to Main Menu", callback_data="menu_start"),
+            InlineKeyboardButton("❌ Close Explorer", callback_data="settings_close"),
+        ]
+    )
 
     dir_name = os.path.basename(target_abs) or "Root"
     text = f"📁 <b>Workspace Explorer</b>: <code>{dir_name}</code>\n"

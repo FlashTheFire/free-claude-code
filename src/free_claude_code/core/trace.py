@@ -3,9 +3,15 @@
 Emitted lines are merged into JSON log rows by ``config.logging_config``.
 Conversation and Claude Code prompts are logged verbatim unless values live under
 sanitized credential keys (e.g. ``api_key``, ``authorization``).
+
+A module-level ``_TRACING_ENABLED`` flag (controlled by env ``FCC_TRACING``)
+lets operators disable trace overhead entirely in production.  When disabled,
+``trace_event()`` returns immediately and ``traced_async_stream()`` skips
+periodic chunk emissions while still forwarding stream data unchanged.
 """
 
 import asyncio
+import os
 import sys
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from typing import Any
@@ -15,6 +21,14 @@ from loguru import logger
 from free_claude_code.core.async_iterators import try_close_async_iterator
 
 TRACE_PAYLOAD_BINDING = "trace_payload"
+
+# Operators can disable all TRACE overhead via FCC_TRACING=false
+_TRACING_ENABLED: bool = os.getenv("FCC_TRACING", "true").lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
 
 _SECRET_VALUE_KEYS = frozenset(
     k.lower()
@@ -49,7 +63,12 @@ def sanitize_trace_value(obj: Any) -> Any:
 
 
 def trace_event(*, stage: str, event: str, source: str, **fields: Any) -> None:
-    """Emit one structured TRACE row (merged into JSON by the log sink)."""
+    """Emit one structured TRACE row (merged into JSON by the log sink).
+
+    Returns immediately when tracing is disabled (``FCC_TRACING=false``).
+    """
+    if not _TRACING_ENABLED:
+        return
     payload = sanitize_trace_value(
         {
             "stage": stage,
@@ -119,7 +138,12 @@ async def traced_async_stream(
         async for chunk in agen:
             count += 1
             nbytes += len(chunk.encode("utf-8", errors="replace"))
-            if chunk_event and chunk_interval > 0 and count % chunk_interval == 0:
+            if (
+                _TRACING_ENABLED
+                and chunk_event
+                and chunk_interval > 0
+                and count % chunk_interval == 0
+            ):
                 trace_event(
                     stage=stage,
                     event=chunk_event,
@@ -189,8 +213,79 @@ async def traced_async_stream(
         )
 
 
+def redact_message_text(text: str) -> str:
+    return f"<text:len={len(text)}>"
+
+
+def redact_block(item: Any) -> Any:
+    if isinstance(item, str):
+        return redact_message_text(item)
+    if isinstance(item, Mapping):
+        res = dict(item)
+        t = res.get("type")
+        if t == "text" and "text" in res:
+            res["text"] = redact_message_text(res["text"])
+        elif t == "thinking" and "thinking" in res:
+            res["thinking"] = f"<thinking:len={len(res['thinking'])}>"
+        elif t == "redacted_thinking" and "data" in res:
+            res["data"] = f"<thinking_redacted:len={len(res['data'])}>"
+        elif t == "image" and "source" in res:
+            res["source"] = "<redacted_image>"
+        elif t == "tool_result" and "content" in res:
+            c = res["content"]
+            if isinstance(c, str):
+                res["content"] = redact_message_text(c)
+            elif isinstance(c, tuple | list):
+                res["content"] = [redact_block(x) for x in c]
+            elif isinstance(c, Mapping):
+                res["content"] = redact_block(c)
+        elif "text" in res and isinstance(res["text"], str):
+            res["text"] = redact_message_text(res["text"])
+        return res
+    if isinstance(item, tuple | list):
+        return [redact_block(x) for x in item]
+    return item
+
+
+def redact_message_content(content: Any) -> Any:
+    if isinstance(content, str):
+        return redact_message_text(content)
+    if isinstance(content, tuple | list):
+        return [redact_block(x) for x in content]
+    return redact_block(content)
+
+
+def redact_system_prompt(system: Any) -> Any:
+    if system is None:
+        return None
+    if isinstance(system, str):
+        return redact_message_text(system)
+    if isinstance(system, tuple | list):
+        return [redact_block(x) for x in system]
+    return redact_block(system)
+
+
+def redact_messages_list(messages: Any) -> Any:
+    if not isinstance(messages, tuple | list):
+        return messages
+    out = []
+    for msg in messages:
+        if isinstance(msg, Mapping):
+            res = dict(msg)
+            if "content" in res:
+                res["content"] = redact_message_content(res["content"])
+            if "reasoning_content" in res and isinstance(res["reasoning_content"], str):
+                res["reasoning_content"] = redact_message_text(res["reasoning_content"])
+            out.append(res)
+        else:
+            out.append(msg)
+    return out
+
+
 def provider_chat_body_snapshot(body: Mapping[str, Any]) -> dict[str, Any]:
-    """Sanitized OpenAI-compat chat body subset for traces (conversation text verbatim)."""
+    """Sanitized OpenAI-compat chat body subset for traces (conversation text redacted)."""
     keys = ("model", "messages", "tools", "tool_choice", "temperature", "max_tokens")
     snap = {k: body[k] for k in keys if k in body and body[k] is not None}
+    if "messages" in snap:
+        snap["messages"] = redact_messages_list(snap["messages"])
     return sanitize_trace_value(snap)

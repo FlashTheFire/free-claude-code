@@ -202,6 +202,7 @@ async def _check_local_provider(
 
 class StartTestPayload(BaseModel):
     """Payload to start validation tests for a list of model IDs."""
+
     models: list[str]
 
 
@@ -214,8 +215,9 @@ async def get_testable_models(
     require_loopback_admin(request)
     from free_claude_code.api.model_catalog import build_models_list_response
     from free_claude_code.core.gateway_model_ids import decode_gateway_model_id
+
     resp = build_models_list_response(settings, services.requests)
-    
+
     # Group models by provider
     grouped = {}
     for m in resp.data:
@@ -227,11 +229,11 @@ async def get_testable_models(
             provider = "compatibility"
             if "/" in m_id:
                 provider = m_id.split("/", 1)[0]
-                
+
         if provider not in grouped:
             grouped[provider] = []
         grouped[provider].append(m_id)
-        
+
     return {"grouped": grouped}
 
 
@@ -243,6 +245,7 @@ async def run_model_tests(
 ):
     require_loopback_admin(request)
     from .model_testing import testing_manager
+
     port = settings.port
     auth_token = settings.anthropic_auth_token
     started = testing_manager.start_test(payload.models, auth_token, port)
@@ -253,7 +256,7 @@ async def run_model_tests(
                 "status": "already_running",
                 "message": "A model test run is already in progress.",
                 "total": testing_manager.total_models,
-            }
+            },
         )
     return {"status": "started", "total": len(payload.models)}
 
@@ -262,13 +265,11 @@ async def run_model_tests(
 async def get_model_tests_status(request: Request):
     require_loopback_admin(request)
     from .model_testing import testing_manager
+
     return {
         "is_running": testing_manager.is_running,
         "total": testing_manager.total_models,
         "tested": testing_manager.tested_count,
         "elapsed_seconds": testing_manager.elapsed_seconds,
-        "results": {
-            k: v.model_dump() for k, v in testing_manager.results.items()
-        }
+        "results": {k: v.model_dump() for k, v in testing_manager.results.items()},
     }
-

@@ -1,5 +1,6 @@
 """Gateway-safe model ID encoding shared by API and CLI adapters."""
 
+import re
 from dataclasses import dataclass
 
 GATEWAY_MODEL_ID_PREFIX = "anthropic"
@@ -17,14 +18,46 @@ class DecodedGatewayModelId:
     force_thinking_enabled: bool | None = None
 
 
+OBFUSCATION_MAP = {
+    "deepseek": "feepseek",
+    "kimi": "fimi",
+    "k2": "k_2",
+    "minimax": "finimax",
+    "qwen": "fwen",
+    "gemini": "femini",
+    "llama": "flama",
+    "mistral": "fistral",
+    "openai": "fopenai",
+    "gpt": "f-p-t",
+    "google": "foogle",
+    "meta": "feta",
+}
+
+REVERSE_OBFUSCATION_MAP = {v: k for k, v in OBFUSCATION_MAP.items()}
+
+
+def obfuscate_model_ref(ref: str) -> str:
+    for key, val in OBFUSCATION_MAP.items():
+        ref = re.sub(re.escape(key), val, ref, flags=re.IGNORECASE)
+    return ref
+
+
+def deobfuscate_model_ref(ref: str) -> str:
+    for key, val in REVERSE_OBFUSCATION_MAP.items():
+        ref = re.sub(re.escape(key), val, ref, flags=re.IGNORECASE)
+    return ref
+
+
 def gateway_model_id(provider_model_ref: str) -> str:
     """Return the normal Claude Code-discoverable id for a provider/model ref."""
-    return f"{GATEWAY_MODEL_ID_PREFIX}/{provider_model_ref}"
+    obfuscated = obfuscate_model_ref(provider_model_ref)
+    return f"{GATEWAY_MODEL_ID_PREFIX}/claude-{obfuscated}"
 
 
 def no_thinking_gateway_model_id(provider_model_ref: str) -> str:
     """Return a Claude Code-discoverable id that disables client thinking."""
-    return f"{NO_THINKING_GATEWAY_MODEL_ID_PREFIX}/{provider_model_ref}"
+    obfuscated = obfuscate_model_ref(provider_model_ref)
+    return f"{NO_THINKING_GATEWAY_MODEL_ID_PREFIX}/{obfuscated}"
 
 
 def decode_gateway_model_id(model_name: str) -> DecodedGatewayModelId | None:
@@ -35,12 +68,15 @@ def decode_gateway_model_id(model_name: str) -> DecodedGatewayModelId | None:
 
     force_thinking_enabled: bool | None
     if prefix == GATEWAY_MODEL_ID_PREFIX:
+        if remainder.startswith("claude-"):
+            remainder = remainder[len("claude-") :]
         force_thinking_enabled = None
     elif prefix == NO_THINKING_GATEWAY_MODEL_ID_PREFIX:
         force_thinking_enabled = False
     else:
         return None
 
+    remainder = deobfuscate_model_ref(remainder)
     provider_id, provider_separator, provider_model = remainder.partition("/")
     if not provider_separator or not provider_model:
         return None

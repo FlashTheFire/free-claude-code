@@ -8,12 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from free_claude_code.messaging.event_parser import parse_cli_event
+
+
 @pytest.fixture(autouse=True)
 def mock_shutil_which():
     with patch("shutil.which", return_value="claude"):
         yield
 
-from free_claude_code.messaging.event_parser import parse_cli_event
 
 # --- Existing Parser Tests ---
 

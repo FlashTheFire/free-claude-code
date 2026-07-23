@@ -1,12 +1,12 @@
 import asyncio
 import json
-import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+
 import httpx
 from pydantic import BaseModel
+
 
 class ModelTestResult(BaseModel):
     model: str
@@ -19,19 +19,20 @@ class ModelTestResult(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
 
+
 class ModelTestingManager:
     def __init__(self):
         self.is_running = False
         self.total_models = 0
         self.tested_count = 0
-        self.results: Dict[str, ModelTestResult] = {}
+        self.results: dict[str, ModelTestResult] = {}
         self.start_time = 0.0
         self.elapsed_seconds = 0.0
         self._current_task = None
         self._save_in_progress = False
         self._save_needed = False
 
-    def start_test(self, model_ids: List[str], auth_token: str, port: int) -> bool:
+    def start_test(self, model_ids: list[str], auth_token: str, port: int) -> bool:
         if self.is_running:
             return False
         self.is_running = True
@@ -40,16 +41,15 @@ class ModelTestingManager:
         self.start_time = time.time()
         self.elapsed_seconds = 0.0
         self.results = {
-            m_id: ModelTestResult(model=m_id, status="pending")
-            for m_id in model_ids
+            m_id: ModelTestResult(model=m_id, status="pending") for m_id in model_ids
         }
         # Run in background via asyncio
         task = asyncio.create_task(self._run_tests(model_ids, auth_token, port))
         self._current_task = task
-        
+
         def _on_done(t):
             self._current_task = None
-            
+
         task.add_done_callback(_on_done)
         return True
 
@@ -66,7 +66,7 @@ class ModelTestingManager:
             if self._save_needed:
                 asyncio.create_task(self.request_save())
 
-    async def _run_tests(self, model_ids: List[str], auth_token: str, port: int):
+    async def _run_tests(self, model_ids: list[str], auth_token: str, port: int):
         headers = {
             "anthropic-version": "2023-06-01",
         }
@@ -88,9 +88,7 @@ class ModelTestingManager:
                 try:
                     async with httpx.AsyncClient(timeout=15.0) as client:
                         r = await client.post(
-                            f"{base_url}/v1/messages",
-                            headers=headers,
-                            json=body
+                            f"{base_url}/v1/messages", headers=headers, json=body
                         )
                     latency = round((time.time() - t0) * 1000)
                     self.results[model_id].latency_ms = latency
@@ -101,7 +99,9 @@ class ModelTestingManager:
                         resp_text = ""
                         in_tok = 0
                         out_tok = 0
-                        is_sse = "event-stream" in r.headers.get("Content-Type", "").lower()
+                        is_sse = (
+                            "event-stream" in r.headers.get("Content-Type", "").lower()
+                        )
                         text_text = ""
                         thinking_text = ""
 
@@ -120,13 +120,17 @@ class ModelTestingManager:
                                             if delta.get("type") == "text_delta":
                                                 text_text += delta.get("text", "")
                                             elif delta.get("type") == "thinking_delta":
-                                                thinking_text += delta.get("thinking", "")
+                                                thinking_text += delta.get(
+                                                    "thinking", ""
+                                                )
                                         elif etype == "content_block_start":
                                             block = evt.get("content_block", {})
                                             if block.get("type") == "text":
                                                 text_text += block.get("text", "")
                                             elif block.get("type") == "thinking":
-                                                thinking_text += block.get("thinking", "")
+                                                thinking_text += block.get(
+                                                    "thinking", ""
+                                                )
                                         elif etype == "message_start":
                                             msg = evt.get("message", {})
                                             usage = msg.get("usage", {})
@@ -192,24 +196,28 @@ class ModelTestingManager:
         # Build working and failed lists
         working = []
         failed = []
-        for model_id, res in self.results.items():
+        for res in self.results.values():
             if res.status == "passed":
-                working.append({
-                    "model": res.model,
-                    "status": res.http_status,
-                    "latency_ms": res.latency_ms,
-                    "response": res.response,
-                    "input_tokens": res.input_tokens,
-                    "output_tokens": res.output_tokens
-                })
+                working.append(
+                    {
+                        "model": res.model,
+                        "status": res.http_status,
+                        "latency_ms": res.latency_ms,
+                        "response": res.response,
+                        "input_tokens": res.input_tokens,
+                        "output_tokens": res.output_tokens,
+                    }
+                )
             elif res.status in ["failed", "timeout", "error"]:
-                failed.append({
-                    "model": res.model,
-                    "status": res.http_status,
-                    "latency_ms": res.latency_ms,
-                    "error_type": res.error_type or res.status,
-                    "error_message": res.error_message
-                })
+                failed.append(
+                    {
+                        "model": res.model,
+                        "status": res.http_status,
+                        "latency_ms": res.latency_ms,
+                        "error_type": res.error_type or res.status,
+                        "error_message": res.error_message,
+                    }
+                )
 
         working.sort(key=lambda x: x["latency_ms"])
 

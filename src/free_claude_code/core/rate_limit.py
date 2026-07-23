@@ -24,8 +24,8 @@ class StrictSlidingWindowLimiter:
         if rate_window <= 0:
             raise ValueError("rate_window must be > 0")
 
-        self._rate_limit = int(rate_limit)
-        self._rate_window = float(rate_window)
+        self._rate_limit = rate_limit
+        self._rate_window = rate_window
         self._times: deque[float] = deque()
         self._lock = asyncio.Lock()
 
@@ -59,10 +59,9 @@ class StrictSlidingWindowLimiter:
                 oldest = self._times[0]
                 wait_time = max(0.0, (oldest + self._rate_window) - now)
 
+            # Only sleep when genuinely at capacity; no unnecessary yield.
             if wait_time > 0:
                 await asyncio.sleep(wait_time)
-            else:
-                await asyncio.sleep(0)
 
     async def __aenter__(self) -> StrictSlidingWindowLimiter:
         await self.acquire()

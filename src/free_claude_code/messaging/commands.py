@@ -149,6 +149,7 @@ async def handle_clear_command(
         and not (incoming.message_id and incoming.message_id.startswith("cb_clear_"))
     ):
         from free_claude_code.messaging.keyboards import make_clear_confirm_keyboard
+
         msg_id = await handler.outbound.queue_send_message(
             incoming.chat_id,
             "⚠️ Are you sure you want to reset this session?",
@@ -162,7 +163,6 @@ async def handle_clear_command(
         )
         return
 
-    from free_claude_code.messaging.trees import TreeQueueManager
     if incoming.is_reply() and incoming.reply_to_message_id:
         result = await handler.clear_reply(
             incoming.scope,
@@ -226,6 +226,7 @@ async def handle_model_command(
         current_model = getattr(settings, "model", "")
 
     from free_claude_code.messaging.keyboards import make_model_keyboard
+
     text, kb = make_model_keyboard(current_model)
     msg_id = await handler.outbound.queue_send_message(
         incoming.chat_id,
@@ -266,6 +267,7 @@ async def handle_settings_command(
         debug_platform_edits = getattr(settings, "debug_platform_edits", False)
 
     from free_claude_code.messaging.keyboards import make_settings_keyboard
+
     msg_id = await handler.outbound.queue_send_message(
         incoming.chat_id,
         "⚙️ *Telegram Bot settings Panel*:",
@@ -322,6 +324,7 @@ async def handle_workspace_command(
     rel_path = parts[1] if len(parts) > 1 else ""
 
     from free_claude_code.messaging.keyboards import make_workspace_keyboard
+
     text, kb = make_workspace_keyboard(workspace_dir, rel_path)
 
     msg_id = await handler.outbound.queue_send_message(
@@ -356,6 +359,7 @@ async def handle_start_command(
     )
 
     from free_claude_code.messaging.keyboards import make_start_keyboard
+
     is_tg = incoming.platform == "telegram"
     reply_markup = make_start_keyboard() if is_tg else None
     parse_mode = "HTML" if is_tg else None

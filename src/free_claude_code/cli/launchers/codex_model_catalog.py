@@ -9,8 +9,7 @@ from typing import Any
 
 from free_claude_code.config.provider_catalog import SUPPORTED_PROVIDER_IDS
 from free_claude_code.core.gateway_model_ids import (
-    GATEWAY_MODEL_ID_PREFIX,
-    NO_THINKING_GATEWAY_MODEL_ID_PREFIX,
+    decode_gateway_model_id,
 )
 
 SUPPORTED_REASONING_LEVELS = [
@@ -105,31 +104,20 @@ def _catalog_candidates(
 def _candidate_from_model_id(
     model_id: str, *, display_name: str
 ) -> _CatalogCandidate | None:
+    decoded = decode_gateway_model_id(model_id)
+    if decoded is not None:
+        provider_model_ref = f"{decoded.provider_id}/{decoded.provider_model}"
+        return _CatalogCandidate(
+            slug=model_id
+            if decoded.force_thinking_enabled is False
+            else provider_model_ref,
+            provider_model_ref=provider_model_ref,
+            display_name=display_name,
+            force_no_thinking=decoded.force_thinking_enabled is False,
+        )
+
     prefix, separator, remainder = model_id.partition("/")
-    if not separator:
-        return None
-
-    if prefix == GATEWAY_MODEL_ID_PREFIX:
-        if not _is_provider_model_ref(remainder):
-            return None
-        return _CatalogCandidate(
-            slug=remainder,
-            provider_model_ref=remainder,
-            display_name=display_name,
-            force_no_thinking=False,
-        )
-
-    if prefix == NO_THINKING_GATEWAY_MODEL_ID_PREFIX:
-        if not _is_provider_model_ref(remainder):
-            return None
-        return _CatalogCandidate(
-            slug=model_id,
-            provider_model_ref=remainder,
-            display_name=display_name,
-            force_no_thinking=True,
-        )
-
-    if prefix in SUPPORTED_PROVIDER_IDS and remainder:
+    if separator and prefix in SUPPORTED_PROVIDER_IDS and remainder:
         return _CatalogCandidate(
             slug=model_id,
             provider_model_ref=model_id,

@@ -82,7 +82,9 @@ class PlatformOutbox:
 
         async def _edit() -> None:
             if reply_markup is not None:
-                await self._edit(chat_id, message_id, text, parse_mode, reply_markup=reply_markup)
+                await self._edit(
+                    chat_id, message_id, text, parse_mode, reply_markup=reply_markup
+                )
             else:
                 await self._edit(chat_id, message_id, text, parse_mode)
 
